@@ -1,0 +1,51 @@
+{
+  "_doc": "Guitar Pro (GM program) -> super-template slot. Slot index = Channel rack index; mixer insert = index + 1. Programs are 0-based GM numbers as written in the MIDI.",
+  "caps": {
+    "drums": 1,
+    "bass": 2,
+    "guitar": 4,
+    "acoustic": 1,
+    "keys": 2,
+    "pads": 1,
+    "synth_lead": 1,
+    "fallback": 1
+  },
+  "caps_note": "One Guitar Pro drum track is split across 5 mixer channels (Kick/Snare/Toms/Hats/Cymbals). Extra tracks in a family are dropped and listed in report.md. Dist and clean guitars share the 4 guitar slots: dist prefers Gtr 1-2, clean prefers Gtr 3-4, then either takes the next free guitar slot. A 5th guitar is dropped.",
+  "overflow": {
+    "dist_gtr": ["clean_gtr"],
+    "clean_gtr": ["dist_gtr"]
+  },
+  "slots": [
+    {"name": "Kick",       "family": "drums",     "plugin": "FPC (same kit cloned)", "bus": "Drum Bus"},
+    {"name": "Snare",      "family": "drums",     "plugin": "FPC (same kit cloned)", "bus": "Drum Bus"},
+    {"name": "Toms",       "family": "drums",     "plugin": "FPC (same kit cloned)", "bus": "Drum Bus"},
+    {"name": "Hats",       "family": "drums",     "plugin": "FPC (same kit cloned)", "bus": "Drum Bus"},
+    {"name": "Cymbals",    "family": "drums",     "plugin": "FPC (same kit cloned)", "bus": "Drum Bus"},
+    {"name": "Bass 1",     "family": "bass",      "plugin": "FLEX bass"},
+    {"name": "Bass 2",     "family": "bass",      "plugin": "FLEX bass"},
+    {"name": "Gtr 1 Dist", "family": "dist_gtr",  "plugin": "FLEX Distortion Guitar", "bus": "Gtr Bus"},
+    {"name": "Gtr 2 Dist", "family": "dist_gtr",  "plugin": "FLEX Distortion Guitar", "bus": "Gtr Bus"},
+    {"name": "Gtr 3 Clean","family": "clean_gtr", "plugin": "FLEX clean/overdriven guitar", "bus": "Gtr Bus"},
+    {"name": "Gtr 4 Clean","family": "clean_gtr", "plugin": "FLEX clean/overdriven guitar", "bus": "Gtr Bus"},
+    {"name": "Acoustic",   "family": "acoustic",  "plugin": "FLEX acoustic"},
+    {"name": "Piano 1",    "family": "keys",      "plugin": "FL Keys"},
+    {"name": "Piano 2",    "family": "keys",      "plugin": "FL Keys"},
+    {"name": "Pads",       "family": "pads",      "plugin": "FLEX pads/strings"},
+    {"name": "Synth",      "family": "synth_lead","plugin": "3x Osc or Sytrus"},
+    {"name": "Fallback",   "family": "fallback",  "plugin": "FLEX"}
+  ],
+  "buses": [
+    {"name": "Drum Bus",   "insert": 18, "from_family": "drums"},
+    {"name": "Gtr Bus",    "insert": 19, "from_family": ["dist_gtr", "clean_gtr"]},
+    {"name": "Drum Crush", "insert": 20, "send_from": ["Drum Bus"]}
+  ],
+  "families": {
+    "keys":       [[0, 7]],
+    "acoustic":   [[24, 25]],
+    "clean_gtr":  [[26, 28]],
+    "dist_gtr":   [[29, 31]],
+    "bass":       [[32, 39]],
+    "pads":       [[40, 55], [88, 95]],
+    "synth_lead": [[80, 87]]
+  }
+}
