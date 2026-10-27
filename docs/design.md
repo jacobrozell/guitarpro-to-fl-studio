@@ -47,7 +47,7 @@ Test song result: 1–3 distinct velocities per track → 22–52.
 song.mid ──prepare_gp_midi.py──▶ songs/<slug>/{notes.json, expressive.mid, report.md}   [agent]
          ──push_to_fl.py──────▶ mapped slots filled, unused muted, inserts named, tempo   [agent]
          ──MCP────────────────▶ gain stage, Mix Doctor, EQ/comp                          [agent, you approve]
-         ──Cmd+S, quit FL─────▶ songs/<slug>/<slug>.flp                                   [you]
+         ──save_quit.sh───────▶ Cmd+S then Cmd+Q (project must already have a path)       [agent]
          ──render_mp3.sh──────▶ songs/<slug>/<slug>.mp3 → fl_analyze_audio sanity check   [agent]
 ```
 
@@ -107,7 +107,7 @@ Verify each channel's piano roll and that the Pattern 1 clip spans the whole son
 
 ### Phase 4 — Save + render
 
-You: **Save As** `songs/<slug>/<slug>.flp`, quit FL. Agent: `scripts/render_mp3.sh songs/<slug>/<slug>.flp`, then `fl_analyze_audio` on the MP3. If the CLI render fails on FL 2026, fall back to File → Export → MP3.
+`scripts/save_quit.sh` sends Cmd+S, checks the `.flp` modification time, then Cmd+Q. That overwrites the open project. Save As onto a new path is still a dialog. Then `scripts/render_mp3.sh`. If the CLI render fails on FL 2026, fall back to File → Export → MP3.
 
 ---
 

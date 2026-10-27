@@ -1,69 +1,83 @@
 # Guitar Pro MIDI → FL Studio
 
-Turn a Guitar Pro `.mid` export into a velocity-aware FL Studio project and an MP3. A stock-plugin template supplies the instruments FL's API cannot load. Scripts write the notes, and [flstudio-mcp](https://github.com/rosasynthesiz/flstudio-mcp) drives the mixer.
+Take a Guitar Pro MIDI export and produce a velocity-aware FL Studio project plus an MP3 that plays like a small band: drums, bass, and guitars, with a mix already on the tracks.
 
-Verified on **FL Studio 2026** (v26.1.7), macOS. Plugin-parameter writes need the [`jacob/fl2026`](https://github.com/jacobrozell/flstudio-mcp) fork of that bridge (explicit `pickupMode`). Upstream silently drops those writes on FL 2026.
+Guitar Pro writes almost every note at one velocity (its default *mf*). FL Studio's scripting API can change notes, faders, and plugin knobs on plugins that are already loaded, and it cannot load a new instrument. This repo covers both gaps. A Python script writes the dynamics. A stock-plugin project, `templates/gp-super.flp`, supplies the instruments. [flstudio-mcp](https://github.com/rosasynthesiz/flstudio-mcp) is the bridge that talks to FL.
 
-## What a song run does
+Verified on **FL Studio 2026** (v26.1.7), macOS. Plugin-knob writes on that version need the [`jacob/fl2026`](https://github.com/jacobrozell/flstudio-mcp) fork of the bridge.
 
-1. `scripts/prepare_gp_midi.py` builds dynamics, maps GM programs onto template slots, turns pitch bends into FL slide notes, and remaps drums onto FPC.
-2. `scripts/push_to_fl.py` writes those notes into the open template and mutes unused channels.
-3. You save and quit FL. `scripts/render_mp3.sh` renders the MP3. `scripts/measure_mp3.py` prints peak, RMS, and band balance.
+## How it works
 
-Mix defaults (EQ, compression, guitar and drum buses, Maximus) already live in `templates/gp-super.flp`. Per-song work is fader and pan tweaks, not rebuilding the chain.
-
-## Requirements
-
-- FL Studio 2026 on macOS, with the stock plugins in the template (FLEX, FPC, FL Keys, 3x Osc, Parametric EQ 2, Fruity Limiter, Fruity Blood Overdrive, Fruity Fast Dist, Reeverb 2, Spreader, Maximus).
-- Python 3.10+.
-- The `jacob/fl2026` fork of flstudio-mcp, installed and running as the bridge daemon.
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+```
+song.mid
+  prepare_gp_midi.py    dynamics, slot map, bends → slides, drum remap
+  push_to_fl.py         notes into the open template
+  save_quit.sh          Cmd+S, then Cmd+Q
+  render_mp3.sh         FL's command-line renderer → .mp3
 ```
 
-`mido` is required for prepare. `librosa`, `numpy`, and `soundfile` are only for `measure_mp3.py`.
+**Prepare** reads the MIDI offline. Each track is assigned a slot in the template from its General MIDI program (lead/solo in the track name counts as a lead). One drum kit is split across kick, snare, toms, hats, and cymbals, and notes outside FPC's pads are folded onto the nearest pad. Velocities are generated per role: metric accents, a louder snare backbeat, softer ghosts and chugs, phrase shape on leads, plus a small seeded jitter. Notes the author already marked softer stay proportionally softer. Pitch-wheel bends become FL slide notes, timed to the original rise and fall. A little micro-timing (laid-back snare, a strum across a chord) is on by default. The script writes `notes.json`, a MIDI file with the new velocities, and `report.md`.
 
-## One-time FL setup
+**The template** is a normal `.flp` you open once per song. It has 17 channels of stock plugins (FPC, FLEX, FL Keys, 3x Osc) routed to their own mixer inserts, plus a drum bus, a guitar bus, a parallel drum compressor, and Maximus on the master. EQ, compression, room reverb, and guitar drive are already set. Extra parts past the caps (one kit, two basses, four electric guitars, and so on) are dropped and listed in the report. See [templates/README.md](templates/README.md).
 
-See [SETUP.md](SETUP.md). Short version: install the fork, start `fl-studio-mcp-daemon`, enable `FLStudioMCP RX` / `TX` on the same port in MIDI settings, open `templates/gp-super.flp`, and run **MCP Apply** once from a piano roll this session.
+**Push** sends `notes.json` to the bridge daemon over localhost, selects each template channel, and writes the piano roll. Channels the song does not use are muted. FL will only run that piano-roll script if **MCP Apply** has been run once from a piano roll in the current FL session.
 
-## Per song
+**Save and render.** FL must be quit before it will render from the command line. `save_quit.sh` sends Cmd+S and Cmd+Q to the running FL process and checks that the `.flp` timestamp moved. Cmd+S overwrites the file that is already open. `render_mp3.sh` launches FL with `-R -Emp3`. `measure_mp3.py` prints peak, RMS, spectral balance, and stereo width.
+
+The mix is already in the template. Further fader and pan moves are optional. The velocity rules and the accepted losses are in [docs/design.md](docs/design.md).
+
+## Ways to run it
+
+Cursor is optional. The song path is a few scripts. An agent is only there if you want one to run them and nudge the mix.
+
+### Terminal, no Cursor
+
+Install the bridge and this repo's Python packages ([SETUP.md](SETUP.md)). Leave `fl-studio-mcp-daemon` running, open `templates/gp-super.flp`, and run **MCP Apply** once from any piano roll (Tools → Scripting). That menu item arms FL's "run last script" shortcut. It is an FL script, not a Cursor permission.
 
 ```bash
 python scripts/prepare_gp_midi.py path/to/song.mid --out songs/<slug>
 python scripts/push_to_fl.py songs/<slug>/notes.json
+scripts/save_quit.sh "/absolute/path/to/the/open/project.flp"
+scripts/render_mp3.sh "/absolute/path/to/the/open/project.flp"
+python scripts/measure_mp3.py "/absolute/path/to/the/open/project.mp3"
 ```
 
-Check `songs/<slug>/report.md` for dropped or unassigned tracks. Save the project, quit FL, then:
+Read `songs/<slug>/report.md` before the push. It lists anything that was dropped or could not be assigned a slot.
+
+`push_to_fl.py` talks to the daemon on `127.0.0.1:9787`. `save_quit.sh` and the piano-roll hotkey send keystrokes, so macOS Accessibility has to include **Terminal** (or iTerm), the app you run the scripts from.
+
+### Terminal, no Accessibility grant
+
+Skip the hotkey and the scripted save.
 
 ```bash
-scripts/render_mp3.sh "/absolute/path/project.flp"
-python scripts/measure_mp3.py "/absolute/path/project.mp3"
+python scripts/prepare_gp_midi.py path/to/song.mid --out songs/<slug>
+python scripts/push_to_fl.py songs/<slug>/notes.json --scripts-only
 ```
 
-An agent prompt for the same loop is in [AGENT_PROMPT.md](AGENT_PROMPT.md). Slot caps and how to rebuild the template are in [templates/README.md](templates/README.md). The velocity model and accepted losses are in [docs/design.md](docs/design.md).
+`--scripts-only` still needs the daemon. It writes one piano-roll script per track and does not press keys. In FL, open each used channel's piano roll → Tools → Scripting → `MCP <song> <slot>`. Then save and quit yourself. Render with `render_mp3.sh` after FL has quit, or use File → Export → MP3. Neither of those needs Accessibility.
 
-## Layout
+### No bridge
 
-| Path | What |
-|---|---|
-| `templates/gp-super.flp` | 17 channels, drum/guitar buses, mix defaults |
-| `scripts/prepare_gp_midi.py` | MIDI → `notes.json`, `expressive.mid`, `report.md` |
-| `scripts/gp_instrument_map.json` | GM program → template slot |
-| `scripts/push_to_fl.py` | Notes into the open template via the daemon |
-| `scripts/build_template.py` | Names, routing, and mix defaults on a freshly loaded project |
-| `scripts/render_mp3.sh` | Command-line MP3 render (FL must be quit) |
-| `scripts/measure_mp3.py` | Peak, RMS, spectrum, stereo width |
-| `scripts/fl_param.py` | Set a plugin param to a display value (Hz, dB, %) |
-| `scripts/make_double.py` | Optional second take for a hard-panned double |
+`prepare_gp_midi.py` never talks to FL. It writes `expressive.mid` (the same song with the new velocities) plus `report.md`. Import that MIDI into any project, including the template, the way you normally would. You keep the dynamics. You give up the automatic slot mapping, muted unused channels, and bend slides, which live in `notes.json` and only land in FL through the push step.
+
+### Optional: an agent in Cursor
+
+[AGENT_PROMPT.md](AGENT_PROMPT.md) is the same loop, handed to an assistant. Wire the MCP server only if you want that. Accessibility then includes Cursor as well as Terminal, because the agent is the one sending Cmd+S and the piano-roll shortcut. The daemon still has to be running. The agent cannot load new plugins.
+
+## Requirements
+
+- FL Studio 2026 on macOS, and the stock plugins named above
+- Python 3.10+ (`mido` to prepare; `librosa` only to measure an MP3)
+- The `jacob/fl2026` fork of flstudio-mcp, running as `fl-studio-mcp-daemon`, if you push notes into the template. Preparing `expressive.mid` does not need it.
 
 ## Limits
 
-FL cannot load plugins, clone channels, or write tempo automation over the API. Songs whose tempo varies by more than 5% are baked to one tempo so the MP3 matches Guitar Pro; notes in the other sections sit off the grid. Palm-mute and tapping articulations are not in Guitar Pro's MIDI. Note apply still needs **MCP Apply** armed once per FL session, and saving the `.flp` is still manual.
+- Songs whose tempo varies by more than about 5% are played at one tempo. Note times are converted so the MP3 still matches Guitar Pro, and those sections sit off FL's grid.
+- Palm mute and tapping are not in Guitar Pro's MIDI, so they are not in the FL project.
+- The first save onto a brand-new path is still FL's Save As dialog. After that, `save_quit.sh` can overwrite the open file.
+- FL still cannot load or clone plugins over the API. New instruments mean editing the template.
 
 ## License
 
-MIT. See [LICENSE](LICENSE). The bridge is a separate MIT project.
+MIT. See [LICENSE](LICENSE). The bridge is its own MIT project.

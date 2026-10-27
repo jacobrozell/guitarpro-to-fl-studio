@@ -26,11 +26,13 @@ Restart FL so it loads the controller script.
 3. Output: `FLStudioMCP TX` → Enable → Port **42**.
 4. View → Script output should show `[FLStudioMCP] Ready`.
 
-## 3. Cursor (or another MCP client)
+## 3. Accessibility, only if a script will press keys
 
-Point the client at the installed `fl-studio-mcp` server. After a reload, `fl_ping` should succeed while FL is open and the daemon is running.
+`push_to_fl.py` without `--scripts-only`, and `save_quit.sh`, send keystrokes. Grant Accessibility to the app that launches them (Terminal or iTerm).
 
-Grant Accessibility to the app that sends the piano-roll hotkey (Cursor, Terminal, or whatever runs the daemon): System Settings → Privacy & Security → Accessibility.
+Skip this if you use `--scripts-only` and save, quit, and export yourself. See the README section "Ways to run it".
+
+Cursor is not part of this setup. Add it only if you want an agent to run the loop ([AGENT_PROMPT.md](AGENT_PROMPT.md)). In that case the MCP client points at the installed `fl-studio-mcp` server, and Cursor needs Accessibility too.
 
 ## 4. Open the template
 

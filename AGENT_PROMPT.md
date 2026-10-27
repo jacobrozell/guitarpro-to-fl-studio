@@ -13,7 +13,9 @@ Guitar Pro MIDI: <PATH_TO.mid>
 3. Unused template channels are already muted. If a guitar overflowed onto a
    clean slot, unmute Fast Dist and Blood Overdrive on that insert.
 4. Per-song fader and pan tweaks only. Mix defaults are in the template.
-5. User saves and quits FL. Then scripts/render_mp3.sh and scripts/measure_mp3.py.
+5. scripts/save_quit.sh on the open .flp (Cmd+S, confirm the file changed, Cmd+Q),
+   then scripts/render_mp3.sh and scripts/measure_mp3.py.
+   Save As to a new path is still a dialog; Cmd+S overwrites the open file.
 ```
 
 Do not invent plugin loads. Only control plugins already on the mixer or channels.
