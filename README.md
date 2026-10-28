@@ -57,6 +57,19 @@ python scripts/push_to_fl.py songs/<slug>/notes.json --scripts-only
 
 `--scripts-only` still needs the daemon. It writes one piano-roll script per track and does not press keys. In FL, open each used channel's piano roll → Tools → Scripting → `MCP <song> <slot>`. Then save and quit yourself. Render with `render_mp3.sh` after FL has quit, or use File → Export → MP3. Neither of those needs Accessibility.
 
+### FL stays closed
+
+`splice_flp.py` copies the template and writes `notes.json` into that copy. FL does not need to be running, and the stock template is not overwritten.
+
+```bash
+python scripts/prepare_gp_midi.py path/to/song.mid --out songs/<slug>
+python scripts/splice_flp.py songs/<slug>/notes.json \
+  --template templates/gp-super.flp \
+  --out songs/<slug>/<slug>.flp
+```
+
+Notes land on the template channels named in `notes.json`, including slide flags. Tempo and the pattern-1 playlist clip are updated. Unused channels stay as they are in the template; muting those is the `push_to_fl.py` path. Open the new `.flp` in FL to hear it, then render.
+
 ### No bridge
 
 `prepare_gp_midi.py` never talks to FL. It writes `expressive.mid` (the same song with the new velocities) plus `report.md`. Import that MIDI into any project, including the template, the way you normally would. You keep the dynamics. You give up the automatic slot mapping, muted unused channels, and bend slides, which live in `notes.json` and only land in FL through the push step.
